@@ -9,20 +9,20 @@
             font-family: Arial, sans-serif;
             margin: 20px;
         }
-        #posts {
+        #messages {
             max-width: 800px;
             margin: auto;
         }
-        .post {
+        .message {
             margin-bottom: 20px;
             border: 1px solid #ddd;
             padding: 10px;
             background-color: #f9f9f9;
         }
-        .post p {
+        .message p {
             margin: 0;
         }
-        .post-info {
+        .message-info {
             font-size: 12px;
             color: #888;
         }
@@ -35,19 +35,11 @@
             margin: 20px auto;
             display: none;
         }
-        #pagination {
-            max-width: 800px;
-            margin: 20px auto;
-            text-align: center;
+        #post-content {
+            width: 100%;
         }
-        .page-link {
-            margin: 0 5px;
-            cursor: pointer;
-            color: #007bff;
-            text-decoration: underline;
-        }
-        .page-link:hover {
-            text-decoration: none;
+        #logout-button {
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -58,166 +50,100 @@
         <button onclick="login()">Iniciar Sesión</button>
     </div>
 
-    <div id="posts">
-        <!-- Aquí se mostrarán los posts -->
+    <div id="messages">
+        <!-- Aquí se mostrarán los mensajes -->
     </div>
-
-    <div id="pagination"></div>
 
     <div id="post-form" style="display: none;">
         <textarea id="post-content" rows="4" cols="50" placeholder="Escribe tu mensaje..."></textarea>
         <button onclick="submitPost()">Publicar</button>
-        <button onclick="logout()">Cerrar Sesión</button>
+        <button id="logout-button" onclick="logout()">Cerrar Sesión</button>
     </div>
 
     <script>
-        const POSTS_PER_PAGE = 5;
-        let currentPage = 1;
+        let username;
 
         function login() {
-            var username = document.getElementById("username").value;
+            username = document.getElementById("username").value.trim();
 
-            if (username.trim() === "") {
+            if (username === "") {
                 alert("Por favor, ingrese un nombre de usuario.");
                 return;
             }
 
-            localStorage.setItem("username", username);
-
             document.getElementById("login-form").style.display = "none";
             document.getElementById("post-form").style.display = "block";
+            document.getElementById("logout-button").textContent = `Cerrar Sesión (${username})`;
 
-            displayPosts();
-        }
-
-        function getUsername() {
-            return localStorage.getItem("username");
-        }
-
-        function displayPosts() {
-            var postsContainer = document.getElementById("posts");
-            postsContainer.innerHTML = "";
-
-            var posts = JSON.parse(localStorage.getItem("posts")) || [];
-            var startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-            var endIndex = startIndex + POSTS_PER_PAGE;
-
-            for (let i = startIndex; i < endIndex && i < posts.length; i++) {
-                var post = posts[i];
-                var postElement = document.createElement("div");
-                postElement.className = "post";
-                postElement.innerHTML = "<p><strong>" + post.username + ":</strong> " + post.content + "</p>";
-                postElement.innerHTML += "<p class='post-info'>" + formatPostDate(post.timestamp) + "</p>";
-                postElement.innerHTML += "<button onclick='editPost(" + post.timestamp + ")'>Editar</button>";
-                postElement.innerHTML += "<button onclick='deletePost(" + post.timestamp + ")'>Eliminar</button>";
-                postsContainer.appendChild(postElement);
-            }
-
-            renderPagination(posts.length);
+            displayMessages();
         }
 
         function submitPost() {
-            var postContent = document.getElementById("post-content").value;
-            var username = getUsername();
-
-            if (!username) {
-                alert("Por favor, inicie sesión antes de publicar.");
-                return;
-            }
+            const postContent = document.getElementById("post-content").value;
 
             if (postContent.trim() === "") {
                 alert("Por favor, escriba algo antes de publicar.");
                 return;
             }
 
-            var posts = JSON.parse(localStorage.getItem("posts")) || [];
-
-            var newPost = {
+            const message = {
                 username: username,
                 content: postContent,
                 timestamp: new Date().getTime()
             };
 
-            posts.push(newPost);
+            const messages = JSON.parse(localStorage.getItem("messages")) || [];
+            messages.push(message);
+            localStorage.setItem("messages", JSON.stringify(messages));
 
-            localStorage.setItem("posts", JSON.stringify(posts));
-
-            displayPosts();
+            displayMessages();
 
             document.getElementById("post-content").value = "";
         }
 
-        function editPost(timestamp) {
-            var posts = JSON.parse(localStorage.getItem("posts")) || [];
-            var editedContent = prompt("Edita tu mensaje:", "");
+        function displayMessages() {
+            const messagesContainer = document.getElementById("messages");
+            messagesContainer.innerHTML = "";
 
-            if (editedContent !== null) {
-                var updatedPosts = posts.map(function(post) {
-                    if (post.timestamp === timestamp) {
-                        post.content = editedContent;
-                    }
-                    return post;
-                });
+            const messages = JSON.parse(localStorage.getItem("messages")) || [];
 
-                localStorage.setItem("posts", JSON.stringify(updatedPosts));
-
-                displayPosts();
-            }
-        }
-
-        function deletePost(timestamp) {
-            var posts = JSON.parse(localStorage.getItem("posts")) || [];
-
-            var updatedPosts = posts.filter(function(post) {
-                return post.timestamp !== timestamp;
+            messages.forEach(message => {
+                const messageElement = document.createElement("div");
+                messageElement.className = "message";
+                messageElement.innerHTML = `<p><strong>${message.username}:</strong> ${message.content}</p>`;
+                messageElement.innerHTML += `<p class='message-info'>${formatMessageDate(message.timestamp)}</p>`;
+                messagesContainer.appendChild(messageElement);
             });
-
-            localStorage.setItem("posts", JSON.stringify(updatedPosts));
-
-            displayPosts();
         }
 
         function logout() {
-            localStorage.removeItem("username");
+            username = null;
 
             document.getElementById("login-form").style.display = "block";
             document.getElementById("post-form").style.display = "none";
+            document.getElementById("logout-button").textContent = "Cerrar Sesión";
+
+            displayMessages();
         }
 
-        function formatPostDate(timestamp) {
-            var date = new Date(timestamp);
+        function formatMessageDate(timestamp) {
+            const date = new Date(timestamp);
             return date.toLocaleString();
         }
 
-        function renderPagination(totalPosts) {
-            var totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
-            var paginationContainer = document.getElementById("pagination");
-            paginationContainer.innerHTML = "";
-
-            for (let i = 1; i <= totalPages; i++) {
-                var pageLink = document.createElement("span");
-                pageLink.className = "page-link";
-                pageLink.textContent = i;
-                pageLink.onclick = function() {
-                    currentPage = i;
-                    displayPosts();
-                };
-                paginationContainer.appendChild(pageLink);
-            }
-        }
-
         window.onload = function() {
-            var username = getUsername();
+            username = localStorage.getItem("username");
 
             if (username) {
                 document.getElementById("login-form").style.display = "none";
                 document.getElementById("post-form").style.display = "block";
-
-                displayPosts();
+                document.getElementById("logout-button").textContent = `Cerrar Sesión (${username})`;
             } else {
                 document.getElementById("login-form").style.display = "block";
                 document.getElementById("post-form").style.display = "none";
             }
+
+            displayMessages();
         };
     </script>
 </body>
