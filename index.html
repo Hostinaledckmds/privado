@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Privado</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #posts {
+            max-width: 800px;
+            margin: auto;
+        }
+        .post {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .post p {
+            margin: 0;
+        }
+        .post-info {
+            font-size: 12px;
+            color: #888;
+        }
+        #post-form {
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        #login-form {
+            max-width: 800px;
+            margin: 20px auto;
+            display: none;
+        }
+        #pagination {
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        .page-link {
+            margin: 0 5px;
+            cursor: pointer;
+            color: #007bff;
+            text-decoration: underline;
+        }
+        .page-link:hover {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-form">
+        <label for="username">Usuario:</label>
+        <input type="text" id="username" placeholder="Ingrese su nombre de usuario">
+        <button onclick="login()">Iniciar Sesión</button>
+    </div>
+
+    <div id="posts">
+        <!-- Aquí se mostrarán los posts -->
+    </div>
+
+    <div id="pagination"></div>
+
+    <div id="post-form" style="display: none;">
+        <textarea id="post-content" rows="4" cols="50" placeholder="Escribe tu mensaje..."></textarea>
+        <button onclick="submitPost()">Publicar</button>
+        <button onclick="logout()">Cerrar Sesión</button>
+    </div>
+
+    <script>
+        const POSTS_PER_PAGE = 5;
+        let currentPage = 1;
+
+        function login() {
+            var username = document.getElementById("username").value;
+
+            if (username.trim() === "") {
+                alert("Por favor, ingrese un nombre de usuario.");
+                return;
+            }
+
+            localStorage.setItem("username", username);
+
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("post-form").style.display = "block";
+
+            displayPosts();
+        }
+
+        function getUsername() {
+            return localStorage.getItem("username");
+        }
+
+        function displayPosts() {
+            var postsContainer = document.getElementById("posts");
+            postsContainer.innerHTML = "";
+
+            var posts = JSON.parse(localStorage.getItem("posts")) || [];
+            var startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+            var endIndex = startIndex + POSTS_PER_PAGE;
+
+            for (let i = startIndex; i < endIndex && i < posts.length; i++) {
+                var post = posts[i];
+                var postElement = document.createElement("div");
+                postElement.className = "post";
+                postElement.innerHTML = "<p><strong>" + post.username + ":</strong> " + post.content + "</p>";
+                postElement.innerHTML += "<p class='post-info'>" + formatPostDate(post.timestamp) + "</p>";
+                postElement.innerHTML += "<button onclick='editPost(" + post.timestamp + ")'>Editar</button>";
+                postElement.innerHTML += "<button onclick='deletePost(" + post.timestamp + ")'>Eliminar</button>";
+                postsContainer.appendChild(postElement);
+            }
+
+            renderPagination(posts.length);
+        }
+
+        function submitPost() {
+            var postContent = document.getElementById("post-content").value;
+            var username = getUsername();
+
+            if (!username) {
+                alert("Por favor, inicie sesión antes de publicar.");
+                return;
+            }
+
+            if (postContent.trim() === "") {
+                alert("Por favor, escriba algo antes de publicar.");
+                return;
+            }
+
+            var posts = JSON.parse(localStorage.getItem("posts")) || [];
+
+            var newPost = {
+                username: username,
+                content: postContent,
+                timestamp: new Date().getTime()
+            };
+
+            posts.push(newPost);
+
+            localStorage.setItem("posts", JSON.stringify(posts));
+
+            displayPosts();
+
+            document.getElementById("post-content").value = "";
+        }
+
+        function editPost(timestamp) {
+            var posts = JSON.parse(localStorage.getItem("posts")) || [];
+            var editedContent = prompt("Edita tu mensaje:", "");
+
+            if (editedContent !== null) {
+                var updatedPosts = posts.map(function(post) {
+                    if (post.timestamp === timestamp) {
+                        post.content = editedContent;
+                    }
+                    return post;
+                });
+
+                localStorage.setItem("posts", JSON.stringify(updatedPosts));
+
+                displayPosts();
+            }
+        }
+
+        function deletePost(timestamp) {
+            var posts = JSON.parse(localStorage.getItem("posts")) || [];
+
+            var updatedPosts = posts.filter(function(post) {
+                return post.timestamp !== timestamp;
+            });
+
+            localStorage.setItem("posts", JSON.stringify(updatedPosts));
+
+            displayPosts();
+        }
+
+        function logout() {
+            localStorage.removeItem("username");
+
+            document.getElementById("login-form").style.display = "block";
+            document.getElementById("post-form").style.display = "none";
+        }
+
+        function formatPostDate(timestamp) {
+            var date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        function renderPagination(totalPosts) {
+            var totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
+            var paginationContainer = document.getElementById("pagination");
+            paginationContainer.innerHTML = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+                var pageLink = document.createElement("span");
+                pageLink.className = "page-link";
+                pageLink.textContent = i;
+                pageLink.onclick = function() {
+                    currentPage = i;
+                    displayPosts();
+                };
+                paginationContainer.appendChild(pageLink);
+            }
+        }
+
+        window.onload = function() {
+            var username = getUsername();
+
+            if (username) {
+                document.getElementById("login-form").style.display = "none";
+                document.getElementById("post-form").style.display = "block";
+
+                displayPosts();
+            } else {
+                document.getElementById("login-form").style.display = "block";
+                document.getElementById("post-form").style.display = "none";
+            }
+        };
+    </script>
+</body>
+</html>
